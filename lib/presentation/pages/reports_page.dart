@@ -25,6 +25,15 @@ class _ReportsPageState extends State<ReportsPage> {
   bool initializing = true;
   final Set<int> selectedIds = {};
   bool exportOpen = false;
+  final TextEditingController _searchController = TextEditingController();
+  String searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -170,6 +179,27 @@ class _ReportsPageState extends State<ReportsPage> {
                         },
                       ),
                       const SizedBox(height: 14),
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (value) => setState(
+                          () => searchQuery = value.trim().toLowerCase(),
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Rechercher un rapport…',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: searchQuery.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Effacer la recherche',
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => searchQuery = '');
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
                       SegmentedButton<String>(
                         segments: const [
                           ButtonSegment(value: 'daily', label: Text('Jour')),
@@ -201,6 +231,9 @@ class _ReportsPageState extends State<ReportsPage> {
                             );
                           }
                           if (state is ReportLoaded) {
+                            final reports = state.reports
+                                .where(_matchesSearch)
+                                .toList();
                             if (state.reports.isEmpty) {
                               return const _Message(
                                 icon: Icons.description_outlined,
@@ -208,8 +241,15 @@ class _ReportsPageState extends State<ReportsPage> {
                                     'Aucun rapport envoyé pour cette période.',
                               );
                             }
+                            if (reports.isEmpty) {
+                              return const _Message(
+                                icon: Icons.search_off_rounded,
+                                text:
+                                    'Aucun rapport ne correspond à la recherche.',
+                              );
+                            }
                             return Column(
-                              children: state.reports.map(_reportCard).toList(),
+                              children: reports.map(_reportCard).toList(),
                             );
                           }
                           return const SizedBox.shrink();
@@ -331,6 +371,22 @@ class _ReportsPageState extends State<ReportsPage> {
       ),
     ),
   );
+
+  bool _matchesSearch(Report report) {
+    if (searchQuery.isEmpty) return true;
+    final shopName = shops
+        .where((shop) => shop.id == report.shopId)
+        .map((shop) => shop.name)
+        .join(' ');
+    final date = DateTime.tryParse(report.date);
+    final searchableDate = date == null
+        ? report.date
+        : '${DateFormat('dd/MM/yyyy').format(date)} ${DateFormat('EEEE dd MMMM yyyy', 'fr_FR').format(date)}';
+    return '$shopName $searchableDate ${report.note}'.toLowerCase().contains(
+      searchQuery,
+    );
+  }
+
   Widget _amount(String label, double value, Color color) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
