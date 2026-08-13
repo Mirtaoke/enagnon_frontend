@@ -244,7 +244,7 @@ class _OperationsPageState extends State<OperationsPage> {
         ),
       ),
       title: Text(
-        operation.description,
+        '${operation.direction == 'in' ? 'Dépôt' : 'Retrait'} ${_operationServiceLabel(operation)}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontWeight: FontWeight.w800),
@@ -263,6 +263,19 @@ class _OperationsPageState extends State<OperationsPage> {
       ),
     ),
   );
+
+  String _operationServiceLabel(OperationModel operation) {
+    if (operation.service != 'other') {
+      return labels[operation.service] ?? operation.service;
+    }
+    return switch (operation.type) {
+      'expense' => 'Dépense',
+      'debt' => 'Dette',
+      'debt_repayment' => 'Remboursement',
+      'virtual_credit_purchase' => 'Achat crédit / virtuel',
+      _ => 'Autres',
+    };
+  }
 
   Future<void> _add() async {
     if (modalOpen) return;

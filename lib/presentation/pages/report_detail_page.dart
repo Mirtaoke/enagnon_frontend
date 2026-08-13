@@ -236,11 +236,94 @@ class ReportDetailPage extends StatelessWidget {
       ),
     );
     if (format == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
     final service = ReportExportService();
-    final file = await service.prepare(shopId, format, reportId: reportId);
+    ReportExportFile file;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 18),
+            Expanded(child: Text('Préparation du document…')),
+          ],
+        ),
+      ),
+    );
+    try {
+      file = await service.prepare(shopId, format, reportId: reportId);
+    } catch (error) {
+      if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('$error'), backgroundColor: AppColors.danger),
+      );
+      return;
+    }
     if (!context.mounted) return;
-    await OpenFilex.open(file.path);
-    await service.download(file);
+    Navigator.of(context, rootNavigator: true).pop();
+    final download = await showModalBottomSheet<bool>(
+      context: context,
+      useSafeArea: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          22,
+          22,
+          22,
+          26 + MediaQuery.viewPaddingOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Le rapport est prêt',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => OpenFilex.open(file.path),
+                icon: const Icon(Icons.visibility_outlined),
+                label: const Text('Ouvrir un aperçu'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.download_rounded),
+                label: const Text('Télécharger'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (download == true) {
+      try {
+        final result = await service.download(file);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              result == 'Enregistrement annulé'
+                  ? result
+                  : 'Rapport téléchargé avec succès.',
+            ),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      } catch (error) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Téléchargement impossible : $error'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    }
   }
 
   static double _num(dynamic value) => double.tryParse('$value') ?? 0;

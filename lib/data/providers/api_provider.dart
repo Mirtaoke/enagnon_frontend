@@ -43,7 +43,14 @@ class ApiProvider {
         )
         .timeout(ApiConstants.requestTimeout);
     if (response.statusCode == 200) return response.bodyBytes;
-    throw Exception('Export impossible (${response.statusCode})');
+    var message = 'Export impossible (${response.statusCode}).';
+    try {
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      if (body is Map && body['message'] != null) {
+        message = '${body['message']}';
+      }
+    } catch (_) {}
+    throw ApiException(response.statusCode, message);
   }
 
   Future<dynamic> post(

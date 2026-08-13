@@ -817,22 +817,42 @@ class _DayLegend extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 9),
-          Row(
-            children: [
-              Expanded(
-                child: _value('Entrées', number('entries'), AppColors.success),
-              ),
-              Expanded(
-                child: _value('Sorties', number('outputs'), AppColors.danger),
-              ),
-              Expanded(
-                child: _value(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final values = [
+                ('Entrées', number('entries'), AppColors.success),
+                ('Sorties', number('outputs'), AppColors.danger),
+                (
                   'Écart / veille',
                   difference,
                   difference >= 0 ? AppColors.success : AppColors.danger,
                 ),
-              ),
-            ],
+              ];
+              if (constraints.maxWidth < 390) {
+                return Column(
+                  children: values
+                      .map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          child: _valueRow(item.$1, item.$2, item.$3),
+                        ),
+                      )
+                      .toList(),
+                );
+              }
+              return Row(
+                children: values
+                    .map(
+                      (item) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          child: _value(item.$1, item.$2, item.$3),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
           ),
         ],
       ),
@@ -863,6 +883,26 @@ class _DayLegend extends StatelessWidget {
         label,
         textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 10, color: Colors.black54),
+      ),
+    ],
+  );
+
+  Widget _valueRow(String label, double value, Color color) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: Colors.black54),
+        ),
+      ),
+      Flexible(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '${value >= 0 && label.startsWith('Écart') ? '+' : ''}${value.toStringAsFixed(0)} FCFA',
+            style: TextStyle(fontWeight: FontWeight.w900, color: color),
+          ),
+        ),
       ),
     ],
   );
